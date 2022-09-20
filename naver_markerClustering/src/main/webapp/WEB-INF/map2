@@ -1,0 +1,221 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="ui" uri="http://egovframework.gov/ctl/ui"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
+
+<!-- 네이버 API 영역 -->
+<script src="https://code.jquery.com/jquery-3.6.0.js"
+	integrity="sha256-H+K7U5CnXl1h5ywQfKtSj8PCmoN9aaq30gDh27Xc0jk="
+	crossorigin="anonymous"></script>
+
+<script type="text/javascript">
+	var areaArr = []; // 지역을 담는 배열 ( 지역명/위도경도 )
+	var HOME_PATH = window.HOME_PATH || '.';
+
+	let markers = new Array(); // 마커 정보를 담는 배열
+	let infoWindows = new Array(); // 정보창을 담는 배열
+	var map;
+	
+
+	$(function() {
+
+		initMap();
+		
+		fn_data();
+
+	});
+
+	function initMap() {
+
+		//지도 중심 설정
+		map = new naver.maps.Map('map', {
+			center : new naver.maps.LatLng(37.552758094502494,
+					126.98732600494576), //지도 시작 지점
+			zoom : 12
+		});
+
+		//마우스를 옮긴 후
+		naver.maps.Event.addListener(map, 'idle', function() {
+			updateMarkers(map, markers);
+		});
+
+		for (var i = 0, ii = markers.length; i < ii; i++) {
+			naver.maps.Event.addListener(markers[i], 'click',
+					getClickHandler(i));
+
+		}
+
+	}
+	//마커 생성하기
+	function make_marker(location, lat, lng, locationDesc) {
+
+	var Position =new naver.maps.LatLng(lat, lng);
+	
+		/* 마커생성 */
+		var marker = new naver.maps.Marker({
+			map : map,
+			title : location, // 지역구 이름 
+			position : Position, // 지역구의 위도 경도 넣기 
+			icon : {
+				url : "images/pin_map.png",
+				size : new naver.maps.Size(24, 37),
+				anchor : new naver.maps.Point(12, 37),
+				origin : new naver.maps.Point(lat, lng),
+			},
+			zIndex : 100
+		});
+
+		markers.push(marker); // 생성한 마커를 배열에 담는다.
+
+    //마커 zIndex 변경
+		console.log(markers);
+		console.log(markers[0].getZIndex());
+		markers[0].setZIndex(5);
+		console.log(markers[0].getZIndex());
+		
+		/* 정보창 */
+		var contentString = [
+				'<div style="width:120px;text-align:center;padding:10px;">',
+				'       <h2>인근주민방문1위</h2>','</div>' ].join('');
+
+		var infoWindow = new naver.maps.InfoWindow({
+			content : contentString
+			
+		}); // 클릭했을 때 띄워줄 정보 HTML 작성
+
+		infoWindows.push(infoWindow); // 생성한 정보창을 배열에 담는다.
+	}
+
+	function makeClickHandler() {
+		for (var i = 0, ii = markers.length; i < ii; i++) {
+			naver.maps.Event.addListener(markers[i], 'click',
+					getClickHandler(i));
+
+		}
+	}
+
+	//해당 마커의 인덱스를 seq라는 클로저 변수로 저장하는 이벤트 핸들러를 반환합니다.
+	function getClickHandler(seq) {
+		return function(e) { // 마커를 클릭하는 부분
+			var marker = markers[seq], // 클릭한 마커의 시퀀스로 찾는다.
+			infoWindow = infoWindows[seq]; // 클릭한 마커의 시퀀스로 찾는다
+			console.log(infoWindow);
+
+			if (infoWindow.getMap()) {
+				//닫을 때 
+				infoWindow.close();
+			} else {
+				//열 때 
+				console.log(marker);
+				marker = new naver.maps.Marker(
+						{
+							map : marker.map,
+							title : marker.location, // 지역구 이름 
+							position : marker.position, // 지역구의 위도 경도 넣기 
+							icon : {
+								content : '<img src="/images/pin_default.png" alt="" ' +
+	                'style="margin: 0px; padding: 0px; border: 0px solid transparent; display: block; max-width: none; max-height: none; ' +
+	                '-webkit-user-select: none; position: absolute; width: 22px; height: 35px; left: 0px; top: 0px;">',
+								size : marker.size,
+								anchor : marker.anchor
+							}
+						})
+				infoWindow.open(map, marker); // 표출
+				infoWindow.setOptions({position:{x: infoWindow.position.x, y: infoWindow.position.y-0.014},disableAnchor:true});
+				//var cityhall = new naver.maps.LatLng(37.5666805, 126.9784147),
+				//infowindow.setOptions({position:cityhall.destinationPoint(180,200),disableAnchor:true});
+			}
+		}
+	}
+
+	function showMarker(map, marker) {
+
+		if (marker.setMap())
+			return;
+		marker.setMap(map);
+	}
+
+	function hideMarker(map, marker) {
+
+		if (!marker.setMap())
+			return;
+		marker.setMap(null);
+	}
+
+	function updateMarkers(map, markers) {
+	    //좌표 표시
+	    console.log(map.getBounds());
+
+		var mapBounds = map.getBounds();
+		var marker, position;
+
+		for (var i = 0; i < markers.length; i++) {
+
+			marker = markers[i]
+			position = marker.getPosition();
+
+			if (mapBounds.hasLatLng(position)) {
+				showMarker(map, marker);
+			} else {
+				hideMarker(map, marker);
+			}
+		}
+	}
+
+	function fn_data() {
+		$.ajax({
+			url : "<c:url value='/map/selectdataMap.do'/>",
+			data : "",
+			dataType : "json",
+			method : 'post',
+			success : function(data) {
+
+				for (var i = 0; i < data.length; i++) {
+					make_marker(data[i].location, data[i].lat, data[i].lng,
+							data[i].locationDesc);
+				}
+				makeClickHandler();
+			},
+			error : function(e) {
+				alert('오류가 발생하였습니다. 관리자에게 문의해주세요.');
+			}
+		});
+	}
+</script>
+
+
+<!-- 네이버 지도가 뿌려질 곳 !  -->
+<div class="contents">
+
+	<!-- 서브 콘텐츠 시작(s) -->
+	<form name="listFrm" id="listFrm" method="post">
+		<input type="hidden" name="pageIndex" id="pageIndex"
+			value="${searchVO.pageIndex }"> <input type="hidden"
+			name="searchEventMngId">
+		<div class="search_box">
+			<ul class="clfix">
+				<li class="long5 sch_btn_line"><label class="cate">검색조건</label>
+					<select name="searchCondition">
+						<option value="">전체</option>
+						<option value="1"
+							<c:if test="${searchVO.searchCondition eq '1' }">selected="selected"</c:if>>제목</option>
+						<option value="2"
+							<c:if test="${searchVO.searchCondition eq '2' }">selected="selected"</c:if>>작성자</option>
+				</select> <input type="text" name="searchKeyword"
+					value="${searchVO.searchKeyword }" class="sch_text"></li>
+
+				<li class="long5 btn_area txtr"><a
+					class="btnm btnBlue sameLine"
+					href="<c:url value='/map/selectMap.do'/>">검색초기화</a> <a
+					class="btnm btnLightRed sameLine" href="javascript:fn_data();"
+					title="검색">검색</a></li>
+			</ul>
+		</div>
+		<!-- //search_box 검색영역 -->
+
+	</form>
+</div>
+<div id="map" style="width: 80%; height: 500px; margin: 0 auto;"></div>
